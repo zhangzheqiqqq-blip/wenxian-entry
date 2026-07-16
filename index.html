@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#174c3c">
+  <title>问仙榜固定入口</title>
+  <style>
+    :root{color-scheme:light;--jade:#174c3c;--gold:#b88a38;--paper:#f8f3e6;--ink:#17211d;--red:#a33b2c}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;color:var(--ink);background:radial-gradient(circle at 70% 0%,#dbe8df 0,transparent 36%),linear-gradient(135deg,#eef0e8,#e5e1d3);font-family:"Songti SC","Microsoft YaHei",serif}
+    main{width:min(520px,100%);padding:34px;text-align:center;background:#f8f3e6ee;border:1px solid #b88a3844;border-radius:22px;box-shadow:0 24px 70px #17362924}.seal{width:112px;height:112px;margin:0 auto 24px;display:grid;place-content:center;border:6px double var(--red);border-radius:16px;color:var(--red);font-size:22px;font-weight:900;transform:rotate(-3deg)}h1{margin:0;color:var(--jade);font-size:38px;letter-spacing:.12em}p{line-height:1.7;color:#647169}.button{display:inline-flex;justify-content:center;width:100%;min-height:46px;margin-top:12px;padding:13px 18px;border:0;border-radius:11px;background:var(--jade);color:white;text-decoration:none;font:inherit;font-weight:700;cursor:pointer}.button[disabled]{cursor:wait;opacity:.65}.small{font-size:13px}.error{color:var(--red)}code{word-break:break-all;color:#80601f}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="seal">问仙<br>第一</div>
+    <h1>问仙榜</h1>
+    <p id="status">正在寻找今日公网山门……</p>
+    <button id="retry" class="button" type="button" disabled>正在获取最新地址</button>
+    <p class="small">此入口地址永久不变<br><code id="updated">等待更新信息</code></p>
+  </main>
+  <script>
+    const apiUrl = "https://api.github.com/repos/zhangzheqiqqq-blip/wenxian-entry/contents/target.json";
+    const fallbackUrl = "./target.json";
+    const status = document.querySelector("#status");
+    const retry = document.querySelector("#retry");
+    const updated = document.querySelector("#updated");
+    const validTarget = (url) => /^https:\/\/[-a-z0-9.]+\.cpolar\.(cn|top|io)$/.test(url || "");
+
+    async function loadTarget() {
+      retry.disabled = true;
+      retry.textContent = "正在获取最新地址";
+      status.className = "";
+      status.textContent = "正在寻找今日公网山门……";
+      try {
+        let data;
+        try {
+          const response = await fetch(`${apiUrl}?t=${Date.now()}`, { cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
+          if (!response.ok) throw new Error(`GitHub API ${response.status}`);
+          const file = await response.json();
+          data = JSON.parse(atob(String(file.content || "").replace(/\n/g, "")));
+        } catch {
+          const response = await fetch(`${fallbackUrl}?t=${Date.now()}`, { cache: "no-store" });
+          if (!response.ok) throw new Error(`Pages ${response.status}`);
+          data = await response.json();
+        }
+        if (!validTarget(data.url)) throw new Error("地址格式不正确");
+        updated.textContent = `最新地址更新于 ${new Date(data.updatedAt).toLocaleString("zh-CN")}`;
+        status.textContent = "已找到山门，正在进入……";
+        retry.textContent = "立即进入问仙榜";
+        retry.disabled = false;
+        retry.onclick = () => location.replace(data.url);
+        setTimeout(() => location.replace(data.url), 700);
+      } catch (error) {
+        status.className = "error";
+        status.textContent = "暂时没有取得最新地址，请稍后重试。";
+        updated.textContent = error instanceof Error ? error.message : "入口服务暂不可用";
+        retry.textContent = "重新获取";
+        retry.disabled = false;
+        retry.onclick = loadTarget;
+      }
+    }
+    loadTarget();
+  </script>
+</body>
+</html>
